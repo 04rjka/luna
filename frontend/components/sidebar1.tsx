@@ -1,0 +1,207 @@
+"use client"
+import {
+  BarChart3,
+  ClipboardList,
+  HelpCircle,
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Bot
+} from "lucide-react";
+import { cn } from "cn";
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { ThemeToggle } from "@/components/theme-toggle"
+import { useSidebar } from "@/components/ui/sidebar"
+
+type NavItem = {
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  href: string;
+  isActive?: boolean;
+};
+
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+type SidebarData = {
+  logo: {
+    alt: string;
+    title: string;
+    description: string;
+  };
+  navGroups: NavGroup[];
+  footerGroup: NavGroup;
+};
+
+const sidebarData: SidebarData = {
+  logo: {
+    alt: "PaperChat AI",
+    title: "PaperChat AI",
+    description: "Chat with your documents",
+  },
+  navGroups: [
+    {
+      title: "Overview",
+      items: [
+        { label: "New Chat", icon: LayoutDashboard, href: "/upload" },
+        { label: "Chats", icon: ClipboardList, href: "/chats" },
+        { label: "Documents", icon: BarChart3, href: "/documents" },
+      ],
+    },
+  ],
+  footerGroup: {
+    title: "Support",
+    items: [
+      { label: "Help Center", icon: HelpCircle, href: "#" },
+      { label: "Settings", icon: Settings, href: "#" },
+    ],
+  },
+};
+
+const SidebarLogo = ({ logo }: { logo: SidebarData["logo"] }) => {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-primary">
+            <Bot className="size-8 text-primary-foreground"/>
+          </div>
+          <div className="flex flex-col gap-0.5 leading-none">
+            <span className="font-medium">{logo.title}</span>
+            <span className="text-xs text-muted-foreground">
+              {logo.description}
+            </span>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+};
+
+const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
+  const pathname = usePathname();
+  const { logout } = useAuth();
+  const { setOpenMobile } = useSidebar();
+  return (
+    <Sidebar {...props}>
+      <SidebarHeader>
+        <SidebarLogo logo={sidebarData.logo} />
+      </SidebarHeader>
+      <SidebarContent>
+        {sidebarData.navGroups.map((group) => (
+          <SidebarGroup key={group.title}>
+            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(item.href)}
+                      onClick={() => setOpenMobile(false)}
+                      render={<Link href={item.href} />}
+                    >
+                      {item.label}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuItem>
+                <ThemeToggle />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    setOpenMobile(false)
+                    logout()
+                  }}
+                >
+                  <LogOut className="size-4" />
+                  Logout
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+};
+
+interface Sidebar1Props {
+  className?: string;
+}
+
+interface Sidebar1Props {
+  className?: string;
+  children?: React.ReactNode;
+}
+
+function HeaderBar() {
+  const { state, isMobile } = useSidebar()
+  return (
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <SidebarTrigger className="-ml-1" />
+      {(isMobile || state === "collapsed") && (
+        <span className="text-sm font-medium text-muted-foreground">
+          PaperChat AI
+        </span>
+      )}
+    </header>
+  )
+}
+
+const Sidebar1 = ({ className, children }: Sidebar1Props) => {
+  return (
+    <SidebarProvider className={cn(className)}>
+      <AppSidebar />
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
+        <HeaderBar />
+        <div className="flex flex-1 min-h-0">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+};
+
+export { Sidebar1 };

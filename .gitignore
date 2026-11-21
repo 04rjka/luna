@@ -1,0 +1,28 @@
+.venv/
+venv/
+env/
+ENV/
+
+.env
+.env.*
+!.env.example
+
+.vscode/
+
+__pycache__/
+*.py[cod]
+
+# Storage
+# -----------------------
+
+# Ignore generated data
+backend/storage/chroma/
+backend/storage/temp/
+backend/storage/app.db
+
+# Ignore uploaded PDFs
+backend/storage/uploads/*
+
+# Keep empty folders
+!backend/storage/uploads/.gitkeep
+!backend/storage/temp/.gitkeep
