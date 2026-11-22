@@ -3,6 +3,8 @@ import secrets
 from sqlalchemy import ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.db import Base
+from datetime import datetime,timezone
+from app.db.types import UTCDateTime
 
 class Bot(Base):
     __tablename__ = "bots"
@@ -16,3 +18,5 @@ class Bot(Base):
     system_prompt: Mapped[str | None] = mapped_column(Text)
     theme: Mapped[dict] = mapped_column(JSON, default=dict)
     allowed_origins: Mapped[list] = mapped_column(JSON, default=list)  # ["https://shop.com"]
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )

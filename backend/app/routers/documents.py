@@ -17,3 +17,7 @@ def get_documents(current_user:User = Depends(get_current_user),document_service
 @router.get("/{document_id}")
 def get_document(document_id: int, current_user: User = Depends(get_current_user),document_service: DocumentService = Depends(get_document_service)):
     return document_service.get_document(user_id=current_user.id, document_id=document_id)
+
+@router.delete("/{document_id}", status_code=204)
+def delete_document(document_id: int,current_user: User = Depends(get_current_user),document_service: DocumentService = Depends(get_document_service)):
+    document_service.delete_document(current_user.id, document_id)

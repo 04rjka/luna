@@ -64,6 +64,10 @@ class DocumentService:
         return self.db.scalars(select(Document).where(Document.bot_id == bot_id)
                                .order_by(Document.created_at.desc())).all()
 
+    def get_user_documents(self, user_id: int):
+            return self.db.scalars(select(Document).where(Document.user_id == user_id)
+                                   .order_by(Document.created_at.desc())).all()
+    
     def delete_document(self, user_id: int, document_id: int):
         doc = self.get_document(user_id, document_id)   # existing owner check
         self.ingestion_service.vector_store.delete_by_document(doc.id)
