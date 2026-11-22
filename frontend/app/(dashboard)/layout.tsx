@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/context/AuthContext"
 import { Sidebar1 } from "@/components/sidebar1"
 
 export default function DashboardLayout({
@@ -5,5 +6,5 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <Sidebar1>{children}</Sidebar1>
+  return <AuthProvider><Sidebar1>{children}</Sidebar1></AuthProvider>
 }

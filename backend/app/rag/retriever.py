@@ -24,3 +24,15 @@ class Retriever:
             }
         )
         return retriever.invoke(question)
+
+    # def retrieve_for_bot(self, question, bot_id: int, min_score: float = 0.3):
+    #     results = self.vectorstore.similarity_search_with_relevance_scores(
+    #     question, k=self.k, filter={"bot_id": bot_id})
+
+    #     return [doc for doc, score in results if score >= min_score]
+
+    def retrieve_for_bot(self, question, bot_id: int):
+        retriever = self.vectorstore.as_retriever(
+        search_kwargs={"k": self.k, "filter": {"bot_id": bot_id}}
+    )
+        return retriever.invoke(question)

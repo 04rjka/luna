@@ -8,7 +8,9 @@ from app.db.types import UTCDateTime
 class Conversation(Base):
     __tablename__ = "conversations"
     id:Mapped[int] = mapped_column(primary_key=True,index=True)
-    user_id:Mapped[int] = mapped_column(ForeignKey("users.id",ondelete="cascade"),index=True,nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="cascade"), index=True, nullable=True)
+    bot_id: Mapped[int | None] = mapped_column(ForeignKey("bots.id", ondelete="CASCADE"), index=True, nullable=True)
+    visitor_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     title:Mapped[str] = mapped_column(String(255),nullable=False,default="New chat")
     document_id: Mapped[int | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at:Mapped[datetime]= mapped_column(UTCDateTime,default=lambda:datetime.now(timezone.utc),nullable=False)

@@ -11,3 +11,9 @@ class VectorStore:
     
     def load(self):
         return self.db
+
+    def delete_by_document(self, document_id: int):
+        self.db.delete(where={"document_id": document_id})
+
+    def delete_by_bot(self, bot_id: int):
+        self.db.delete(where={"bot_id": bot_id})

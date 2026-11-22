@@ -15,22 +15,9 @@ from app.rag.pdf_loader import PDFLoader
 from app.services.chat_service import ChatService
 from app.services.ingestion_service import IngestionService
 from app.services.document_service import DocumentService
+from app.services.bot_service import BotService
 
 from app.auth.dependencies import get_current_user
-
-# embedding = EmbeddingService()
-
-# vector_store = VectorStore(db_path=settings.chroma_path,embedding=embedding.get())
-
-# chroma = vector_store.load()
-
-# retriever = Retriever(vectorstore=chroma,k = 5)
-
-# chat_service = ChatService(retriever=retriever,rag_chain=rag_chain)
-
-# ingestion_service = IngestionService(pdf_loader=PDFLoader(),splitter=DocumentSplitter(),vector_store=vector_store)
-
-# document_service = DocumentService(ingestion_service=ingestion_service)
 
 @lru_cache
 def get_embedding_service():
@@ -59,3 +46,7 @@ def get_document_service(db:Session=Depends(get_db),ingestion_service:IngestionS
 
 def get_chat_service(retriever:Retriever=Depends(get_retriever),db:Session=Depends(get_db)):
     return ChatService(retriever=retriever,rag_chain=rag_chain,query_formulation_chain=query_formulation_chain,db=db)
+
+def get_bot_service(db: Session = Depends(get_db),
+                    vector_store: VectorStore = Depends(get_vector_store)):
+    return BotService(db=db, vector_store=vector_store)

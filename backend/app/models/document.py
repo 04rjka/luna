@@ -11,6 +11,8 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"),index=True,nullable=False)
+    bot_id: Mapped[int | None] = mapped_column(ForeignKey("bots.id", ondelete="CASCADE"), index=True, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="processing")  # processing | ready | failed
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime,default=lambda: datetime.now(timezone.utc),nullable=False)

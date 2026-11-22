@@ -4,8 +4,10 @@ from sqlalchemy import select
 from langchain_core.messages import AIMessage,HumanMessage
 from fastapi import HTTPException,status
 import json
+from datetime import datetime, timedelta, timezone
 
 from app.models.chat import Conversation, Message
+from app.models.bot import Bot
 
 class ChatService:
     def __init__(self,retriever,rag_chain,query_formulation_chain,db: Session):
@@ -13,6 +15,8 @@ class ChatService:
         self.rag_chain = rag_chain
         self.query_formulation_chain = query_formulation_chain
         self.db = db
+
+    FALLBACK = "Sorry, I couldn't find that in my documents."
 
     def get_or_create_conversation(self,conversation_id:Optional[int],user_id:int,document_id:int,initial_title:str):
         if conversation_id:
@@ -40,9 +44,43 @@ class ChatService:
         conversation = self.db.scalars(stmt).first()
         if not conversation:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-        return conversation
+        return conversation      
 
-    async def ask(self,question,user_id:int,conversation:Conversation):
+    def get_visitor_conversation(self, bot, visitor_id: str, create: bool, idle_hours: int = 6):
+        conv = self.db.scalars(
+        select(Conversation)
+        .where(Conversation.bot_id == bot.id, Conversation.visitor_id == visitor_id)
+        .order_by(Conversation.created_at.desc())
+    ).first()
+
+        if conv:
+            last = self.db.scalars(
+            select(Message.created_at)
+            .where(Message.conversation_id == conv.id)
+            .order_by(Message.created_at.desc())
+        ).first()
+            if last:
+                if last.tzinfo is None:                      # in case the DB returns naive times
+                    last = last.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) - last < timedelta(hours=idle_hours):
+                    return conv                              # still active
+
+        if not create:
+            return None
+
+        conv = Conversation(bot_id=bot.id, visitor_id=visitor_id, title="Visitor chat")
+        self.db.add(conv)
+        self.db.commit()
+        self.db.refresh(conv)
+        return conv
+
+    def get_messages_of(self, conversation_id: int):
+        return self.db.scalars(
+        select(Message).where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    ).all()
+
+    async def ask(self,question,user_id:int,conversation:Conversation,bot:Bot = None):
 
         stmt = select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at.asc())
 
@@ -50,13 +88,15 @@ class ChatService:
 
         chat_history = []
         for msg in history_records[-6:]:
+            if msg.content == self.FALLBACK:
+                continue
             if msg.role == "user":
                 chat_history.append(HumanMessage(content=msg.content))
             elif msg.role == "assistant":
                 chat_history.append(AIMessage(content=msg.content))
 
         if chat_history:
-            standalone_question = self.query_formulation_chain.invoke({
+            standalone_question = await self.query_formulation_chain.ainvoke({
                 "chat_history":chat_history,
                 "question":question
             })
@@ -66,13 +106,25 @@ class ChatService:
         self.db.add(Message(conversation_id=conversation.id,role="user",content=question))
         self.db.commit()
 
-        docs = self.retriever.retrieve(question=standalone_question,user_id=user_id,document_id=conversation.document_id)
-
+        if bot:
+            docs = self.retriever.retrieve_for_bot(question=standalone_question, bot_id=bot.id)
+        else:
+            docs = self.retriever.retrieve(question=standalone_question, user_id=user_id,
+                                           document_id=conversation.document_id)
+            
         meta_payload = {
             "type": "metadata",
             "conversation_id": conversation.id
         }
         yield f"data: {json.dumps(meta_payload)}\n\n"
+
+        if bot and not docs:
+            # fallback = "Sorry, I couldn't find that in my documents."
+            yield f"data: {json.dumps({'type': 'token', 'content': self.FALLBACK})}\n\n"
+            self.db.add(Message(conversation_id=conversation.id, role="assistant", content=self.FALLBACK))
+            self.db.commit()
+            yield "data: [DONE]\n\n"
+            return
 
         context="\n\n".join(
             doc.page_content
@@ -83,7 +135,8 @@ class ChatService:
         async for chunk in self.rag_chain.astream({
             "context":context,
             "chat_history":chat_history,
-            "question":question
+            "question":question,
+            "instructions": (bot.system_prompt or "") if bot else "",
         }):
             token = chunk.content if hasattr(chunk,"content") else str(chunk)
             accumulated_answer.append(token)

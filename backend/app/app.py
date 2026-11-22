@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.auth import router as auth_router
 from app.routers.chat import router as chat_router
 from app.routers.documents import router as documents_router
+from app.routers.bots import router as bot_router
+from app.routers.public import router as public_router
 from app.config import settings
 
 app = FastAPI()
@@ -18,6 +20,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(documents_router)
+app.include_router(bot_router)
+app.include_router(public_router)
 
 @app.get("/")
 def health():
