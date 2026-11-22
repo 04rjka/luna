@@ -66,9 +66,9 @@ type SidebarData = {
 
 const sidebarData: SidebarData = {
   logo: {
-    alt: "PaperChat AI",
-    title: "PaperChat AI",
-    description: "Chat with your documents",
+    alt: "Luna",
+    title: "Luna",
+    description: "Chatbots made easier",
   },
   navGroups: [
     {
@@ -77,6 +77,7 @@ const sidebarData: SidebarData = {
         { label: "New Chat", icon: LayoutDashboard, href: "/upload" },
         { label: "Chats", icon: ClipboardList, href: "/chats" },
         { label: "Documents", icon: BarChart3, href: "/documents" },
+        { label: "Create Bot", icon: Bot, href: "/bots/new" },
         { label: "Bots", icon: Bot, href: "/bots" },
       ],
     },
@@ -89,6 +90,20 @@ const sidebarData: SidebarData = {
     ],
   },
 };
+
+function isMatch(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+function getActiveHref(pathname: string) {
+  const all = [
+    ...sidebarData.navGroups.flatMap((g) => g.items),
+    ...sidebarData.footerGroup.items,
+  ];
+  return all
+    .filter((item) => item.href !== "#" && isMatch(pathname, item.href))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+}
 
 const SidebarLogo = ({ logo }: { logo: SidebarData["logo"] }) => {
   return (
@@ -112,6 +127,7 @@ const SidebarLogo = ({ logo }: { logo: SidebarData["logo"] }) => {
 
 const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
   const pathname = usePathname();
+  const activeHref = getActiveHref(pathname);
   const { logout } = useAuth();
   const { setOpenMobile } = useSidebar();
   return (
@@ -128,7 +144,7 @@ const AppSidebar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.label}>
                     <SidebarMenuButton
-                      isActive={pathname.startsWith(item.href)}
+                      isActive={item.href === activeHref}
                       onClick={() => setOpenMobile(false)}
                       render={<Link href={item.href} />}
                     >
@@ -184,7 +200,7 @@ function HeaderBar() {
       <SidebarTrigger className="-ml-1" />
       {(isMobile || state === "collapsed") && (
         <span className="text-sm font-medium text-muted-foreground">
-          PaperChat AI
+          Luna
         </span>
       )}
     </header>
