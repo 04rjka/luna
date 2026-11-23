@@ -74,9 +74,6 @@ const sidebarData: SidebarData = {
     {
       title: "Overview",
       items: [
-        { label: "New Chat", icon: LayoutDashboard, href: "/upload" },
-        { label: "Chats", icon: ClipboardList, href: "/chats" },
-        { label: "Documents", icon: BarChart3, href: "/documents" },
         { label: "Create Bot", icon: Bot, href: "/bots/new" },
         { label: "Bots", icon: Bot, href: "/bots" },
       ],

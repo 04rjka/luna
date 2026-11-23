@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PaperChat AI",
-    template: "%s | PaperChat AI",
+    default: "Luna",
+    template: "%s | Luna",
   },
   description: "Chat with your documents.",
 };
