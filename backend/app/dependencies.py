@@ -16,6 +16,7 @@ from app.services.chat_service import ChatService
 from app.services.ingestion_service import IngestionService
 from app.services.document_service import DocumentService
 from app.services.bot_service import BotService
+from app.services.dashboard_service import DashboardService
 
 from app.auth.dependencies import get_current_user
 
@@ -50,3 +51,6 @@ def get_chat_service(retriever:Retriever=Depends(get_retriever),db:Session=Depen
 def get_bot_service(db: Session = Depends(get_db),
                     vector_store: VectorStore = Depends(get_vector_store)):
     return BotService(db=db, vector_store=vector_store)
+
+def get_dashboard_service(db: Session = Depends(get_db)):
+    return DashboardService(db=db)

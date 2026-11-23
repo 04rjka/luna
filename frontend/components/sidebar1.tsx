@@ -74,6 +74,7 @@ const sidebarData: SidebarData = {
     {
       title: "Overview",
       items: [
+        { label: "Dashboard", icon: Bot, href: "/" },
         { label: "Create Bot", icon: Bot, href: "/bots/new" },
         { label: "Bots", icon: Bot, href: "/bots" },
       ],
