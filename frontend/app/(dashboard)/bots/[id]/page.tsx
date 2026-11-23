@@ -34,6 +34,7 @@ export default function BotPage() {
   const [greeting, setGreeting] = useState("")
   const [prompt, setPrompt] = useState("")
   const [color, setColor] = useState("#2563eb")
+  const [position, setPosition] = useState<"left" | "right">("right")
   const [origins, setOrigins] = useState("")
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -49,6 +50,7 @@ export default function BotPage() {
     setGreeting(b.greeting ?? "")
     setPrompt(b.system_prompt ?? "")
     setColor(b.theme?.color ?? "#2563eb")
+    setPosition(b.theme?.position === "left" ? "left" : "right")
     setOrigins((b.allowed_origins ?? []).join("\n"))
   }
 
@@ -116,7 +118,7 @@ export default function BotPage() {
         name: name.trim(),
         greeting: greeting.trim(),
         system_prompt: prompt.trim() || null,
-        theme: { color },
+        theme: { color, position },
         allowed_origins: list,
       })
       setBot(res.data)
@@ -150,16 +152,29 @@ export default function BotPage() {
     </div>
   )
 
-  const snippet =
-    `<script src="${window.location.origin}/widget.js" data-bot="${bot.public_key}" ` +
-    `data-color="${bot.theme?.color ?? "#2563eb"}" async></script>`
+  const snippet = [
+    "<script",
+    `  src="${window.location.origin}/widget.js"`,
+    `  data-bot="${bot.public_key}"`,
+    `  data-color="${bot.theme?.color ?? "#2563eb"}"`,
+    `  data-position="${bot.theme?.position === "left" ? "left" : "right"}"`,
+    "  async></script>",
+  ].join("\n")
 
   async function copySnippet() {
     try {
       await navigator.clipboard.writeText(snippet)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { /* clipboard blocked: user can select the text manually */ }
+    } catch {
+      // clipboard API needs https or localhost; fall back for plain http
+      const ta = document.createElement("textarea")
+      ta.value = snippet
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand("copy")
+      ta.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -183,12 +198,16 @@ export default function BotPage() {
             Paste this before the closing &lt;/body&gt; tag of your website. Add the site under
             "Allowed websites" below first, or the chat will not load there.
           </p>
-          <div className="relative">
-            <pre className="overflow-x-auto rounded-lg border bg-muted p-3 pr-12 text-xs">{snippet}</pre>
-            <Button size="icon" variant="ghost" className="absolute right-1 top-1 h-8 w-8"
-              onClick={copySnippet} aria-label="Copy embed code">
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
+          <div className="overflow-hidden rounded-lg border">
+            <div className="flex items-center justify-between border-b bg-muted px-3 py-1.5">
+              <span className="text-xs text-muted-foreground">HTML</span>
+              <Button size="sm" variant="outline" onClick={copySnippet}>
+                {copied
+                  ? <><Check className="mr-1 h-4 w-4" /> Copied</>
+                  : <><Copy className="mr-1 h-4 w-4" /> Copy</>}
+              </Button>
+            </div>
+            <pre className="overflow-x-auto p-3 text-xs">{snippet}</pre>
           </div>
           <Button variant="outline" size="sm" nativeButton={false}
             render={<a href={`/embed/${bot.public_key}`} target="_blank" rel="noreferrer" />}>
@@ -266,6 +285,18 @@ export default function BotPage() {
             <Label htmlFor="color">Theme color</Label>
             <input id="color" type="color" value={color} onChange={(e) => setColor(e.target.value)}
               className="h-9 w-12 cursor-pointer rounded border bg-transparent p-1" />
+          </div>
+          <div className="space-y-2">
+            <Label>Chat bubble position</Label>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map((p) => (
+                <Button key={p} type="button" size="sm" className="capitalize"
+                  variant={position === p ? "default" : "outline"}
+                  onClick={() => setPosition(p)}>
+                  {p}
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="origins">Allowed websites</Label>

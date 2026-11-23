@@ -5,7 +5,7 @@ export interface Bot {
     owner_id: number;
     name: string;
     greeting: string;
-    theme: { color?: string };
+    theme: { color?: string; position?: "left" | "right" };
     public_key: string;
     system_prompt: string | null;
     allowed_origins: string[];
@@ -16,7 +16,7 @@ export type BotInput = {
     name: string
     greeting?: string
     system_prompt?: string | null
-    theme?: { color?: string }
+    theme?: { color?: string; position?: "left" | "right" }
     allowed_origins?: string[]
 }
 
