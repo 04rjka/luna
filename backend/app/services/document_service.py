@@ -69,7 +69,16 @@ class DocumentService:
                                    .order_by(Document.created_at.desc())).all()
     
     def delete_document(self, user_id: int, document_id: int):
-        doc = self.get_document(user_id, document_id)   # existing owner check
-        self.ingestion_service.vector_store.delete_by_document(doc.id)
+        doc = self.db.scalars(
+            select(Document).where(Document.id == document_id, Document.user_id == user_id)).first()
+        if not doc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+
+        try:
+            self.ingestion_service.vector_store.delete_by_document(doc.id)
+        except Exception as exc:
+            print("vector delete failed:", repr(exc))   # don't block the delete
+
         Path(doc.file_path).unlink(missing_ok=True)
-        self.db.delete(doc); self.db.commit()
+        self.db.delete(doc)
+        self.db.commit()
