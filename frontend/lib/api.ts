@@ -1,104 +1,58 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios"
+import { authClient } from "@/lib/auth-client"
 
 export const api = axios.create({
-  // Forward through Next.js rewrites to attach HttpOnly cookies
   baseURL: "/api/v1",
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+  headers: { "Content-Type": "application/json" },
+})
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}> = [];
+let cached: { token: string; exp: number } | null = null
+let inflight: Promise<string | null> | null = null
 
-const processQueue = (error: AxiosError | null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve();
-    }
-  });
-  failedQueue = [];
-};
+function expOf(token: string) {
+  try {
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")
+    return JSON.parse(atob(b64)).exp * 1000
+  } catch { return 0 }
+}
+
+export function clearToken() { cached = null }
+
+async function getToken(force = false) {
+  if (!force && cached && cached.exp - Date.now() > 30_000) return cached.token
+  inflight ??= authClient.token()
+    .then(({ data }) => {
+      const t = data?.token ?? null
+      cached = t ? { token: t, exp: expOf(t) } : null
+      return t
+    })
+    .catch(() => { cached = null; return null })
+    .finally(() => { inflight = null })
+  return inflight
+}
+
+api.interceptors.request.use(async (config) => {
+  const token = await getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
 api.interceptors.response.use(
-  (response) => response,
+  (r) => r,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-
-    if (!originalRequest) {
-      return Promise.reject(error);
-    }
-
-    const requestUrl = originalRequest.url || "";
-
-    // 1. Check if the failed endpoint is an authentication route
-    const isAuthEndpoint =
-      requestUrl.includes("/auth/login") ||
-      requestUrl.includes("/auth/refresh") ||
-      requestUrl.includes("/auth/register") ||
-      requestUrl.includes("/auth/logout");
-
-    // 2. Flexible path check for auth pages with query parameters
-    const isAuthPage =
-      typeof window !== "undefined" &&
-      (window.location.pathname.startsWith("/login") ||
-        window.location.pathname.startsWith("/signup") ||
-        window.location.pathname.startsWith("/register"));
-
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
-      // If the user is on an auth page, skip refreshing
-      if (isAuthPage) {
-        return Promise.reject(error);
+    const req = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
+    if (error.response?.status === 401 && req && !req._retry) {
+      req._retry = true
+      const token = await getToken(true)          // force a fresh JWT once
+      if (token) {
+        req.headers.Authorization = `Bearer ${token}`
+        return api(req)
       }
-
-      // Queue concurrent requests while a refresh is in progress
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => api(originalRequest))
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Send POST to FastAPI /auth/refresh proxied via Next.js
-        await api.post("/auth/refresh");
-
-        processQueue(null);
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError as AxiosError);
-
-        // Redirect to login if session refresh fails completely
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.startsWith("/login")
-        ) {
-          const currentPath = encodeURIComponent(window.location.pathname);
-          window.location.href = `/login?from=${currentPath}`;
-        }
-
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+      const p = window.location.pathname
+      if (!p.startsWith("/login") && !p.startsWith("/signup") && !p.startsWith("/embed")) {
+        window.location.href = `/login?from=${encodeURIComponent(p)}`
       }
     }
-
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)

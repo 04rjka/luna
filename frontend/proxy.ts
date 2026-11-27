@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 const authRoutes = ["/login", "/signup"];
-const protectedRoutes = ["/documents", "/settings", "/chats", "/upload"];
+const protectedRoutes = ["/bots", "/settings"]; // "/" (dashboard) is handled below
 
 const API = process.env.FASTAPI_URL ?? "http://localhost:8000";
 const KEY_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+const matches = (pathname: string, route: string) =>
+  pathname === route || pathname.startsWith(route + "/");
 
 async function embedResponse(pathname: string) {
   const key = pathname.split("/")[2] ?? "";
@@ -34,18 +38,18 @@ export async function proxy(request: NextRequest) {
     return embedResponse(pathname);
   }
 
-  const token = request.cookies.get("access_token")?.value;
+  // Better Auth session cookie. Presence check only, so this is not a security check.
+  const hasSession = !!getSessionCookie(request);
 
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isAuthRoute = authRoutes.some((r) => matches(pathname, r));
   const isProtectedRoute =
-    pathname === "/" ||
-    protectedRoutes.some((route) => pathname.startsWith(route));
+    pathname === "/" || protectedRoutes.some((r) => matches(pathname, r));
 
-  if (isAuthRoute && token) {
+  if (isAuthRoute && hasSession) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (isProtectedRoute && !token) {
+  if (isProtectedRoute && !hasSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);

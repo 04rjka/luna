@@ -18,24 +18,24 @@ class BotService:
         self.db.add(bot); self.db.commit(); self.db.refresh(bot)
         return bot
 
-    def list(self, user_id: int):
+    def list(self, user_id: str):
         return self.db.scalars(select(Bot).where(Bot.owner_id == user_id)
                                .order_by(Bot.id.desc())).all()
 
-    def get(self, user_id: int, bot_id: int) -> Bot:
+    def get(self, user_id: str, bot_id: int) -> Bot:
         bot = self.db.scalars(select(Bot).where(Bot.id == bot_id, Bot.owner_id == user_id)).first()
         if not bot:
             raise HTTPException(404, "Bot not found")
         return bot
 
-    def update(self, user_id: int, bot_id: int, data: dict) -> Bot:
+    def update(self, user_id: str, bot_id: int, data: dict) -> Bot:
         bot = self.get(user_id, bot_id)
         for k, v in data.items():
             setattr(bot, k, v)
         self.db.commit(); self.db.refresh(bot)
         return bot
 
-    def delete(self, user_id: int, bot_id: int):
+    def delete(self, user_id: str, bot_id: int):
         bot = self.get(user_id, bot_id)
         self.vector_store.delete_by_bot(bot.id)
         for doc in self.db.scalars(select(Document).where(Document.bot_id == bot.id)):

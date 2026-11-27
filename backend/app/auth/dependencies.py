@@ -1,66 +1,43 @@
-from fastapi import Depends,HTTPException,status,Request
-from fastapi.security import HTTPAuthorizationCredentials,HTTPBearer
-from sqlalchemy.orm import Session
 import jwt
+from jwt import PyJWKClient
+from fastapi import Depends, Header, HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.db.db import get_db
 from app.models.user import User
 
-security = HTTPBearer()
+BASE = settings.better_auth_url.rstrip("/")
+_jwks = PyJWKClient(f"{BASE}/api/auth/jwks", cache_keys=True, lifespan=300)
 
-def get_current_user(request:Request,db:Session=Depends(get_db)):
-    token = request.cookies.get("access_token")
-    
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
-    
+def _unauthorized(msg: str):
+    return HTTPException(401, msg, headers={"WWW-Authenticate": "Bearer"})
+
+def get_claims(authorization: str | None = Header(default=None)) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise _unauthorized("Not authenticated")
+    token = authorization[7:]
     try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=["HS256"]
+        key = _jwks.get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token, key.key,
+            algorithms=["EdDSA"], issuer=BASE, audience=BASE,
+            options={"require": ["exp", "iat", "sub"]},
         )
-        if payload.get("type") != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type"
-            )
+    except jwt.PyJWTError:
+        raise _unauthorized("Invalid or expired token")
 
-        user_id = payload.get("sub")
-
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-        
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
-        )
-
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-
-    user = db.get(User,int(user_id))
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
-        )
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
-        )
-
+def get_current_user(claims: dict = Depends(get_claims), db: Session = Depends(get_db)) -> User:
+    uid = claims["sub"]
+    user = db.get(User, uid)
+    if user:
+        return user
+    user = User(id=uid, email=claims.get("email"), name=claims.get("name"))
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:            # two first requests raced; the other one won
+        db.rollback()
+        user = db.get(User, uid)
     return user

@@ -11,7 +11,7 @@ class DashboardService:
     def __init__(self, db: Session):
         self.db = db
 
-    def stats(self, user_id: int):
+    def stats(self, user_id: str):
         bots = self.db.scalars(
             select(Bot).where(Bot.owner_id == user_id).order_by(Bot.id.desc())
         ).all()

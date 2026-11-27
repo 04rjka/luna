@@ -10,7 +10,7 @@ class IngestionService:
         self.splitter = splitter
         self.vector_store = vector_store
 
-    def ingest(self, pdf_path, user_id: int, document_id: int, bot_id: int | None = None):
+    def ingest(self, pdf_path, user_id: str, document_id: int, bot_id: int | None = None):
         documents = self.pdf_loader.load(pdf_path)
         chunks = self.splitter.split_documents(documents)
 

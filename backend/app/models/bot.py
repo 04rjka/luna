@@ -9,7 +9,7 @@ from app.db.types import UTCDateTime
 class Bot(Base):
     __tablename__ = "bots"
     id: Mapped[int] = mapped_column(primary_key=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(100))
     public_key: Mapped[str] = mapped_column(
         String(32), unique=True, index=True,

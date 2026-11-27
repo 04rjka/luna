@@ -18,7 +18,7 @@ class ChatService:
 
     FALLBACK = "Sorry, I couldn't find that in my documents."
 
-    def get_or_create_conversation(self,conversation_id:Optional[int],user_id:int,document_id:int,initial_title:str):
+    def get_or_create_conversation(self,conversation_id:Optional[int],user_id:str,document_id:int,initial_title:str):
         if conversation_id:
             stmt = select(Conversation).where(Conversation.id==conversation_id,Conversation.user_id==user_id)
             conv = self.db.scalars(stmt).first()
@@ -39,7 +39,7 @@ class ChatService:
         self.db.refresh(new_conv)
         return new_conv
 
-    def get_conversation(self, user_id: int, conversation_id: int):
+    def get_conversation(self, user_id: str, conversation_id: int):
         stmt = select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == user_id)
         conversation = self.db.scalars(stmt).first()
         if not conversation:
@@ -80,7 +80,7 @@ class ChatService:
         .order_by(Message.created_at.asc())
     ).all()
 
-    async def ask(self,question,user_id:int,conversation:Conversation,bot:Bot = None):
+    async def ask(self,question,user_id:str,conversation:Conversation,bot:Bot = None):
 
         stmt = select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at.asc())
 
@@ -152,12 +152,12 @@ class ChatService:
 
         yield "data: [DONE]\n\n"
 
-    def get_conversations(self,user_id:int):
+    def get_conversations(self,user_id:str):
         stmt = select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
         converstations = self.db.scalars(stmt).all()
         return converstations
 
-    def get_conversation_messages(self,user_id:int,conversation_id:int):
+    def get_conversation_messages(self,user_id:str,conversation_id:int):
         stmt = select(Conversation).where(Conversation.user_id == user_id,Conversation.id == conversation_id)
         conversation = self.db.scalars(stmt).first()
         if not conversation:
@@ -167,7 +167,7 @@ class ChatService:
         messages = self.db.scalars(msg_stmt).all()
         return messages
 
-    def delete_conversation(self,user_id:int,conversation_id:int):
+    def delete_conversation(self,user_id:str,conversation_id:int):
             stmt = select(Conversation).where(Conversation.user_id == user_id,Conversation.id == conversation_id)
             conversation = self.db.scalars(stmt).first()
             if not conversation:

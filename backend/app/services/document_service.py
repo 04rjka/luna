@@ -48,7 +48,7 @@ class DocumentService:
         background.add_task(self._ingest_job, doc.id, str(file_path), current_user.id, bot.id)
         return doc
 
-    def _ingest_job(self, document_id: int, path: str, user_id: int, bot_id: int):
+    def _ingest_job(self, document_id: int, path: str, user_id: str, bot_id: int):
         # runs after the response, so it needs its own session
         with SessionLocal() as db:
             doc = db.get(Document, document_id)
@@ -64,11 +64,11 @@ class DocumentService:
         return self.db.scalars(select(Document).where(Document.bot_id == bot_id)
                                .order_by(Document.created_at.desc())).all()
 
-    def get_user_documents(self, user_id: int):
+    def get_user_documents(self, user_id: str):
             return self.db.scalars(select(Document).where(Document.user_id == user_id)
                                    .order_by(Document.created_at.desc())).all()
     
-    def delete_document(self, user_id: int, document_id: int):
+    def delete_document(self, user_id: str, document_id: int):
         doc = self.db.scalars(
             select(Document).where(Document.id == document_id, Document.user_id == user_id)).first()
         if not doc:

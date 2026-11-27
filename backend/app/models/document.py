@@ -10,7 +10,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"),index=True,nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"),index=True,nullable=False)
     bot_id: Mapped[int | None] = mapped_column(ForeignKey("bots.id", ondelete="CASCADE"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="processing")  # processing | ready | failed
     filename: Mapped[str] = mapped_column(String(255), nullable=False)

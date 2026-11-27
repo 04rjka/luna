@@ -4,7 +4,7 @@ class Retriever:
         self.vectorstore = vectorstore
         self.k = k
 
-    def retrieve(self, question,user_id:int,document_id:Optional[int]):
+    def retrieve(self, question,user_id:str,document_id:Optional[int]):
 
         if document_id:
             where_filter = {

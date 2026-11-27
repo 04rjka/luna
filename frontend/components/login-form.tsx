@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, LoginFormValues } from "@/lib/schemas/login-schema"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { loginUser } from "@/lib/services/auth"
+import { authClient } from "@/lib/auth-client"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -41,14 +41,23 @@ export function LoginForm({
     defaultValues: { email: "", password: "" },
   })
 
+  function safeRedirect(target?: string | null) {
+    return target && target.startsWith("/") && !target.startsWith("//") ? target : "/"
+  }
+
   async function onSubmit(values: LoginFormValues) {
     try {
-      const response = await loginUser(values)
-      console.log("Login successful : ",response.data )
-      window.location.href = redirectTarget;
-    } catch (err:any) {
-      const errorMessage = err?.response?.data?.detail || "Invalid email or password"
-      setError("root", { message: errorMessage })
+      const { error } = await authClient.signIn.email({
+        email: values.email,
+        password: values.password,
+      })
+      if (error) {
+        setError("root", { message: error.message || "Invalid email or password" })
+        return
+      }
+      window.location.href = safeRedirect(redirectTarget)
+    } catch {
+      setError("root", { message: "Network error. Please try again." })
     }
   }
 
